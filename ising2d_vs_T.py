@@ -33,13 +33,26 @@ def sweep(beta, h, spin):
 @jit
 def initialize_hot(spin):
     """Initialize lattice with random spins"""
-    spin = np.zeros((NX + 2, NY + 2), dtype=np.int8)
     spin[1:-1, 1:-1] = np.where(np.random.random((NX, NY)) < 0.5, 1, -1)
 
 @jit
 def magnetization(spin):
     """Calculate average magnetization"""
     return np.mean(spin[1:-1, 1:-1])
+
+@jit
+def energy(spin, h):
+    """Calculate energy per spin"""
+    E = 0
+    # sum over all spins (excluding boundaries)
+    for nx in range(1, NX + 1):
+        for ny in range(1, NY + 1):
+            s = spin[nx, ny]
+            # nearest neighbors
+            nb = spin[nx+1, ny] + spin[nx-1, ny] + spin[nx, ny+1] + spin[nx, ny-1]
+            E += -s * nb - h * s
+    # Each pair counted twice, divide by 2
+    return E / (2 * NX * NY)
 
 def display_lattice(T,spin):
     """Display the lattice configuration"""
@@ -77,6 +90,9 @@ def main():
     initialize_hot(spin)
     
     with open(output_filename, 'w') as output:
+        # Write header for clarity
+        output.write("# T M E C\n")
+        
         # Do ntemp temperatures between Tmax and 0
         for itemp in range(ntemp, 0, -1):
             T = (Tmax * itemp) / ntemp
@@ -86,14 +102,27 @@ def main():
             for _ in range(ntherm):
                 sweep(beta, h, spin)
             
-            # Main sweeps
+            # Main sweeps: collect magnetization, energy, energy^2
             total_mag = 0
+            total_energy = 0
+            total_energy_sq = 0
+            
             for _ in range(nsweep):
                 sweep(beta, h, spin)
-                total_mag += np.sum(spin[1:-1, 1:-1])
+                mag = np.sum(spin[1:-1, 1:-1])
+                en = energy(spin, h) * NX * NY  # total energy (not per spin)
+                total_mag += mag
+                total_energy += en
+                total_energy_sq += en * en
             
             avg_mag = total_mag / (nsweep * NX * NY)
-            output.write(f"{T:.6f} {avg_mag:.6f}\n")
+            avg_en = total_energy / (nsweep * NX * NY)
+            avg_en_sq = total_energy_sq / (nsweep * NX * NY * NX * NY)
+            
+            # Specific heat per spin
+            C = (avg_en_sq - avg_en**2) / (T**2)
+            
+            output.write(f"{T:.6f} {avg_mag:.6f} {avg_en:.6f} {C:.6f}\n")
             
             if VisualDisplay:
                 display_lattice(T,spin)
@@ -102,4 +131,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
+

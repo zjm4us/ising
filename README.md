@@ -11,4 +11,17 @@ Multiple examples for Ising model and Metropolis algorithm
 
 Complete the exercise for make plots of M,E,C in the 2d lattice using simulated annealing. <br>
 
+Run
 
+python ising2d_vs_T.py
+
+Number of sweeps per temperature (nsweep): 1000 
+External magnetic field (h): 0 
+Maximum temperature (Tmax): 5 
+Number of temperature steps (ntemp): 50
+
+Next Run
+python plot_ising.py
+
+Output file
+icing.pdf
